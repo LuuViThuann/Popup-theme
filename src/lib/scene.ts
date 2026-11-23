@@ -52,12 +52,13 @@ export type SceneKey = keyof typeof SCENE;
 /**
  * The curtain waits on this and nothing else.
  *
- * Act 1 is a single gift box in the dark, so the box is the only composition
- * that has to exist before the greeting can open. Blocking on the whole scene
- * - 1.6MB of JSON, most of it for characters that do not appear for another
- * two to four seconds - is what made the first screen take as long as it did.
+ * Act 1 is Santa dropping a gift box in the dark, so those two are the only
+ * compositions that have to exist before the greeting can open. Blocking on
+ * the whole scene - 1.6MB of JSON, most of it for characters that do not
+ * appear for another few seconds - is what made the first screen take as
+ * long as it did.
  */
-export const CRITICAL: SceneKey[] = ["gift"];
+export const CRITICAL: SceneKey[] = ["gift", "santa"];
 
 /**
  * Everything else, in the order the choreography reaches it. These are warmed
@@ -67,7 +68,6 @@ export const CRITICAL: SceneKey[] = ["gift"];
 export const DEFERRED: SceneKey[] = [
   "bulb",
   "snow",
-  "santa",
   "sleigh",
   "snowmen",
   "run",

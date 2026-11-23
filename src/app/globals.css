@@ -347,6 +347,129 @@ body {
 }
 
 /*
+ * Act 1 Santa: a single linear crossing, in low from the right, climbing
+ * through the release point just right of centre (38%) and away up-left.
+ * He is drawn facing left, so a positive rotation lifts his nose.
+ * Rests hidden, so with the animation off he is simply not there.
+ */
+.xm-sweep {
+  opacity: 0;
+  animation: xm-sweep var(--dur, 2.6s) linear var(--d, 0s) both;
+}
+@keyframes xm-sweep {
+  0% {
+    opacity: 0;
+    transform: translate3d(104cqw, 34cqh, 0) scale(0.6) rotate(10deg);
+  }
+  7% { opacity: 1; }
+  38% {
+    transform: translate3d(calc(56cqw - var(--sw) / 2), 13cqh, 0) scale(0.82)
+      rotate(3deg);
+  }
+  68% {
+    transform: translate3d(calc(18cqw - var(--sw) / 2), 6cqh, 0) scale(0.76)
+      rotate(5deg);
+  }
+  90% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(-6cqw - var(--sw)), -4cqh, 0) scale(0.64)
+      rotate(8deg);
+  }
+}
+
+/*
+ * The present's fall. Two animations on two properties so each axis gets its
+ * own physics: `translate`/`scale` accelerate under gravity, while the
+ * `transform` carrying the sleigh's leftward momentum and spin bleeds off.
+ */
+.xm-gift-drop {
+  animation:
+    xm-gift-fall var(--dur, 0.8s) cubic-bezier(0.5, 0, 0.9, 0.55) var(--d, 0s)
+      both,
+    xm-gift-drift var(--dur, 0.8s) cubic-bezier(0.3, 0.4, 0.6, 1) var(--d, 0s)
+      both;
+}
+@keyframes xm-gift-fall {
+  0% { translate: 0 var(--from-y, -40cqh); scale: 0.3; opacity: 0; }
+  12% { opacity: 1; }
+  100% { translate: 0 0; scale: 1; opacity: 1; }
+}
+@keyframes xm-gift-drift {
+  0% { transform: translateX(var(--from-x, 0)) rotate(-24deg); }
+  100% { transform: none; }
+}
+
+/* Impact: squash into the snow-light, stretch back, settle. The origin is
+   the box's base, ~18% of the element below its centre. */
+.xm-gift-land {
+  transform-origin: 50% 68%;
+  animation: xm-gift-land 0.62s ease-out var(--d, 0s) both;
+}
+@keyframes xm-gift-land {
+  0% { transform: none; }
+  14% { transform: scale3d(1.16, 0.8, 1); }
+  38% { transform: translate3d(0, -4%, 0) scale3d(0.93, 1.09, 1); }
+  60% { transform: scale3d(1.04, 0.97, 1); }
+  80% { transform: scale3d(0.99, 1.01, 1); }
+  100% { transform: none; }
+}
+
+/* The pool of light under the landing spot. Brightens as the box falls in,
+   then hands over to the bloom. The fade-out fills `forwards` only, so it
+   cannot hold the glow at full strength while it waits for its cue. */
+.xm-landing-glow {
+  opacity: 0;
+  animation:
+    xm-landing-glow var(--dur, 1.3s) var(--ease-soft) var(--d, 0s) both,
+    xm-out 0.5s ease-out var(--out, 3s) forwards;
+}
+@keyframes xm-landing-glow {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  62% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  100% { opacity: 0.75; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes xm-out {
+  to { opacity: 0; }
+}
+
+/* Shockwave rings flattened onto the ground plane. */
+.xm-ring {
+  opacity: 0;
+  animation: xm-ring 0.95s cubic-bezier(0.2, 0.7, 0.3, 1) var(--d, 0s) both;
+}
+@keyframes xm-ring {
+  0% { opacity: 0.95; transform: translate(-50%, -50%) scale(0.3); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2.8); }
+}
+
+/* Sparks kicked up on impact, each along its own --a / --r. */
+.xm-spark {
+  opacity: 0;
+  animation: xm-spark 0.9s cubic-bezier(0.15, 0.75, 0.3, 1) var(--d, 0s) both;
+}
+@keyframes xm-spark {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(var(--a)) translateX(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(var(--a)) translateX(var(--r))
+      scale(0.2);
+  }
+}
+
+/* Stars in the Act 1 sky. */
+.xm-twinkle {
+  animation: xm-twinkle var(--dur, 3.5s) ease-in-out var(--d, 0s) infinite;
+}
+@keyframes xm-twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.7); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+/*
  * Santa's pass: in low from off-frame right, banking up the right edge,
  * levelling across the top and peeling away to the left. The cycle is long
  * and the arc only occupies its first third, so he returns now and then
@@ -637,6 +760,13 @@ body {
   .xm-veil,
   .xm-bloom,
   .xm-hero-out,
+  .xm-sweep,
+  .xm-gift-drop,
+  .xm-gift-land,
+  .xm-landing-glow,
+  .xm-ring,
+  .xm-spark,
+  .xm-twinkle,
   .xm-santa,
   .xm-smoke,
   .xm-chase,

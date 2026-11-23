@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import LottieLayer from "./LottieLayer";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import LottieLayer, { type LottieHandle } from "./LottieLayer";
 import Starfield from "./Starfield";
 import Countdown from "./Countdown";
 import { PineCluster, SnowFieldBack, SnowFieldFront } from "./SnowField";
@@ -13,42 +19,77 @@ import { useParallax } from "@/hooks/useParallax";
 /* -------------------------------------------------------------------------- *
  * Choreography, in seconds from the moment the curtain parts.
  *
- *   Act 1  a single gift box in the dark, which opens
+ *   Act 1  Santa sweeps across a starlit dark and drops a present, which
+ *          lands with a ring of light, rocks, and bursts open
  *   Act 2  its light floods the stage and the scene lights up
- *   Act 3  Santa's sleigh banks in across the sky
- *   Act 4  the greeting sets, then the ambient loops take over
+ *   Act 3  the greeting sets, the reindeer and snowmen are already running
+ *   Act 4  the ambient loops take over; Santa comes round again later
  *
  * These doubles as the build schedule: each Lottie layer is constructed at
  * its own cue rather than at mount, so the setup cost is spread across the
  * opening instead of landing in the same frames as the reveal.
  * -------------------------------------------------------------------------- */
 const T = {
-  heroGift: 0.25,
-  heroGiftPlay: 0.45,
-  bloom: 1.55,
-  veil: 1.6,
-  heroOut: 1.95,
+  /* Act 1: Santa sweeps across the dark and lets a present go. */
+  sweep: 0.1,
+  giftDrop: 1.1,
+  giftLand: 1.9,
+  /* The box rocks on landing, then its lid pops ~0.93s later (frame 55.5 of
+     the composition at speed 2). Bloom and veil are cued to that pop. */
+  bloom: 2.8,
+  veil: 2.85,
+  heroOut: 3.15,
 
-  sky: 1.85,
-  garland: 1.95,
+  sky: 3.1,
+  garland: 3.2,
   garlandStep: 0.08,
-  snow: 2.0,
-  drift: 2.1,
-  ridge: 2.2,
+  snow: 3.25,
+  drift: 3.35,
+  ridge: 3.45,
 
-  santa: 2.25,
-
-  script: 2.5,
-  word: 2.75,
+  script: 3.75,
+  word: 4.0,
   wordStep: 0.05,
-  rule: 3.25,
-  blurb: 3.38,
-  countdown: 3.5,
+  rule: 4.5,
+  blurb: 4.63,
+  countdown: 4.75,
 
   /* The ground team is built just before the veil lifts... */
-  dash: 1.5,
-  skySleigh: 4.6,
+  dash: 2.75,
+  skySleigh: 5.9,
+  /* He has only just flown off in Act 1, so his pass over the finished
+     scene is held back until he can plausibly come round again. */
+  santa: 9.5,
 } as const;
+
+/** Act 1 Santa's crossing, start to finish. */
+const SWEEP_S = 2.6;
+/** Playback rate of the gift box - its rocking anticipation is ~0.9s at 2x. */
+const GIFT_SPEED = 2;
+
+/* Sparks thrown up when the box lands: [angle deg, distance px, size px]. */
+const SPARKS: [number, number, number][] = [
+  [-172, 120, 5],
+  [-158, 90, 3],
+  [-145, 140, 4],
+  [-128, 70, 3],
+  [-115, 115, 5],
+  [-100, 150, 3],
+  [-80, 135, 4],
+  [-64, 85, 3],
+  [-50, 125, 5],
+  [-36, 95, 3],
+  [-22, 140, 4],
+  [-8, 110, 3],
+];
+
+/* Act 1 sky: [left %, top %, size px, twinkle period s]. */
+const ACT1_STARS: [number, number, number, number][] = [
+  [8, 14, 2, 3.1], [17, 38, 1.5, 4.2], [24, 9, 2.5, 3.6], [31, 62, 1.5, 4.8],
+  [38, 22, 2, 2.9], [46, 7, 1.5, 3.9], [57, 31, 2, 4.4], [63, 12, 2.5, 3.3],
+  [71, 48, 1.5, 4.6], [78, 19, 2, 3.0], [86, 36, 1.5, 4.1], [92, 10, 2.5, 3.7],
+  [12, 72, 1.5, 4.5], [88, 68, 2, 3.4], [52, 78, 1.5, 4.9], [4, 46, 2, 3.8],
+];
 
 /*
  * ...and its crossing is already under way by then: the path clock is wound
@@ -107,6 +148,26 @@ export default function Stage() {
     const id = setTimeout(() => setHeroGone(true), (T.heroOut + 1.2) * 1000);
     return () => clearTimeout(id);
   }, []);
+
+  /*
+   * The box is built straight away - it has to be on screen while it falls -
+   * but held on its first frame until it lands. Whichever comes last, the
+   * composition being ready or the landing, is what starts it.
+   */
+  const giftRef = useRef<LottieHandle | null>(null);
+  const gift = useRef({ ready: false, landed: false });
+  const openGift = useCallback(() => {
+    // Under reduced motion the layer parks on a single frame; leave it there.
+    if (budget().reduced) return;
+    if (gift.current.ready && gift.current.landed) giftRef.current?.play();
+  }, []);
+  useEffect(() => {
+    const id = setTimeout(() => {
+      gift.current.landed = true;
+      openGift();
+    }, T.giftLand * 1000);
+    return () => clearTimeout(id);
+  }, [openGift]);
 
   /*
    * Once the opening has played out, drop the compositor layers the reveal
@@ -602,17 +663,131 @@ export default function Stage() {
         />
       </div>
 
-      {/* ── Act 1: the box in the dark, and the light it lets out ───────── */}
+      {/* ── Act 1: Santa's drop, and the light the box lets out ─────────── */}
+      {/*
+        Geometry shared by the pieces below, as custom properties so the
+        sweep, the release point and the landing all stay in register at
+        every card size:
+          --sw  Santa's width
+          --gw  the gift element's width. The box only fills the middle ~37%
+                of its square canvas (the rest is headroom for the confetti),
+                so its base sits ~18% of --gw below the element's centre.
+      */}
       {!heroGone && (
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 z-[50] grid place-items-center"
+          style={v({
+            "--sw": "clamp(150px, 20cqw, 280px)",
+            "--gw": "clamp(300px, 46cqw, 620px)",
+          })}
         >
-          {/* The dark the scene opens in */}
+          {/* The dark the scene opens in - a deep night rather than flat
+              black, with its own sky that lifts away with it. */}
+          <div
+            className="xm-veil absolute inset-0"
+            style={v({
+              "--d": `${T.veil}s`,
+              background:
+                "radial-gradient(120% 90% at 50% 42%, #0c1a33 0%, #070e1f 48%, #03050b 100%)",
+            })}
+          >
+            {ACT1_STARS.map(([left, top, size, period], i) => (
+              <span
+                key={i}
+                className="xm-twinkle absolute rounded-full bg-ice-100"
+                style={v({
+                  left: `${left}%`,
+                  top: `${top}%`,
+                  width: `${size}px`,
+                  height: `${size}px`,
+                  "--dur": `${period}s`,
+                  "--d": `${-i * 0.37}s`,
+                  boxShadow: "0 0 6px 1px rgba(230,240,255,0.55)",
+                })}
+              />
+            ))}
+          </div>
+
+          {/* Santa's crossing. His dust trails off the back of the sleigh. */}
+          <div
+            className="xm-sweep absolute top-0 left-0"
+            style={v({
+              "--dur": `${SWEEP_S}s`,
+              "--d": `${T.sweep}s`,
+              width: "var(--sw)",
+            })}
+          >
+            {TRAIL.map(([top, size, delay], i) => (
+              <span
+                key={i}
+                className="xm-trail absolute rounded-full bg-gold-300"
+                style={v({
+                  "--d": `${delay * 0.6}s`,
+                  top: `${top + 30}%`,
+                  right: "2%",
+                  width: `${size + 1}px`,
+                  height: `${size + 1}px`,
+                  boxShadow: "0 0 14px 4px rgba(246,214,133,0.7)",
+                })}
+              />
+            ))}
+            <LottieLayer
+              src={SCENE.santa.src}
+              renderer="canvas"
+              className="h-full w-full drop-shadow-[0_0_28px_rgba(246,214,133,0.28)]"
+              priority={100}
+              pauseOffscreen={false}
+            />
+          </div>
+
+          {/* A pool of light marks the landing spot, brightening as the box
+              falls into it. */}
           <span
-            className="xm-veil absolute inset-0 bg-night-900"
-            style={v({ "--d": `${T.veil}s` })}
+            className="xm-landing-glow absolute left-1/2 rounded-[50%]"
+            style={v({
+              "--d": `${T.giftDrop}s`,
+              "--dur": `${T.giftLand - T.giftDrop + 0.5}s`,
+              "--out": `${T.bloom}s`,
+              top: "calc(50% + var(--gw) * 0.17)",
+              width: "calc(var(--gw) * 0.62)",
+              height: "calc(var(--gw) * 0.12)",
+              background:
+                "radial-gradient(closest-side, rgba(255,232,170,0.55) 0%, rgba(230,189,99,0.22) 55%, transparent 100%)",
+            })}
           />
+
+          {/* Shockwave rings and sparks thrown up on impact. */}
+          {[0, 0.12].map((lag) => (
+            <span
+              key={lag}
+              className="xm-ring absolute left-1/2 rounded-[50%] border border-gold-300/80"
+              style={v({
+                "--d": `${T.giftLand + lag}s`,
+                top: "calc(50% + var(--gw) * 0.185)",
+                width: "calc(var(--gw) * 0.34)",
+                height: "calc(var(--gw) * 0.07)",
+                boxShadow:
+                  "0 0 18px 2px rgba(246,214,133,0.45), inset 0 0 12px rgba(246,214,133,0.35)",
+              })}
+            />
+          ))}
+          {SPARKS.map(([angle, dist, size], i) => (
+            <span
+              key={i}
+              className="xm-spark absolute left-1/2 rounded-full bg-gold-100"
+              style={v({
+                "--d": `${T.giftLand + (i % 3) * 0.03}s`,
+                "--a": `${angle}deg`,
+                "--r": `${dist}px`,
+                top: "calc(50% + var(--gw) * 0.18)",
+                width: `${size}px`,
+                height: `${size}px`,
+                boxShadow: "0 0 10px 2px rgba(246,214,133,0.8)",
+              })}
+            />
+          ))}
+
           {/* The burst */}
           <span
             className="xm-bloom absolute h-[46%] w-[46%] rounded-full"
@@ -622,33 +797,51 @@ export default function Stage() {
                 "radial-gradient(circle, rgba(255,250,232,0.95) 0%, rgba(246,214,133,0.62) 32%, rgba(230,189,99,0.18) 58%, transparent 74%)",
             })}
           />
-          {/* The box itself */}
-          {/* The box only fills the middle ~37% of its square canvas - the
-              rest is headroom for the confetti burst - so the element is set
-              far wider than the box looks, and nudged up by the amount its
-              art sits below the canvas centre. */}
-          <span
-            data-rv="pop"
-            style={v({ "--d": `${T.heroGift}s` })}
-            className="relative block w-[clamp(300px,46cqw,620px)]"
+
+          {/*
+            The box: it falls from the sleigh (outer), squashes on landing
+            (middle), and finally dissolves into its own burst (inner). Three
+            wrappers because each owns its own transform.
+          */}
+          <div
+            className="xm-gift-drop relative"
+            style={v({
+              "--d": `${T.giftDrop}s`,
+              "--dur": `${T.giftLand - T.giftDrop}s`,
+              // Released from the sack as the sleigh passes just right of
+              // centre - see the 38% stop of `xm-sweep`.
+              "--from-x": "6cqw",
+              "--from-y": "calc(var(--sw) * 0.62 - 37cqh)",
+              width: "var(--gw)",
+            })}
           >
-            <span
-              className="xm-hero-out block"
-              style={v({ "--d": `${T.heroOut}s` })}
+            <div
+              className="xm-gift-land"
+              style={v({ "--d": `${T.giftLand}s` })}
             >
-              <LottieLayer
-                src={SCENE.gift.src}
-                renderer="svg"
-                loop={false}
-                speed={1.5}
-                delay={T.heroGiftPlay}
-                priority={100}
-                pauseOffscreen={false}
-                className="h-full w-full drop-shadow-[0_26px_50px_rgba(0,0,0,0.6)]"
-                style={{ transform: "translateY(-12.6%)" }}
-              />
-            </span>
-          </span>
+              <div
+                className="xm-hero-out"
+                style={v({ "--d": `${T.heroOut}s` })}
+              >
+                <LottieLayer
+                  ref={giftRef}
+                  src={SCENE.gift.src}
+                  renderer="svg"
+                  loop={false}
+                  autoplay={false}
+                  speed={GIFT_SPEED}
+                  priority={100}
+                  pauseOffscreen={false}
+                  onReady={() => {
+                    gift.current.ready = true;
+                    openGift();
+                  }}
+                  className="h-full w-full drop-shadow-[0_26px_50px_rgba(0,0,0,0.6)]"
+                  style={{ transform: "translateY(-12.6%)" }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
