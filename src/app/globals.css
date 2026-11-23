@@ -347,8 +347,10 @@ body {
 }
 
 /*
- * Act 1 Santa: a single linear crossing, in low from the right, climbing
- * through the release point just right of centre (38%) and away up-left.
+ * Act 1 Santa: a single, nearly level crossing from right to left. The path
+ * only drifts gently upward, while his size swells a little towards the
+ * release point just right of centre (38%) - as if the sleigh dips slightly
+ * closer to drop the present - then eases back as he flies on.
  * He is drawn facing left, so a positive rotation lifts his nose.
  * Rests hidden, so with the animation off he is simply not there.
  */
@@ -356,25 +358,28 @@ body {
   opacity: 0;
   animation: xm-sweep var(--dur, 2.6s) linear var(--d, 0s) both;
 }
+/* Heights are written as the sleigh's CENTRE (element is ~0.93 --sw tall),
+   so resizing --sw grows him in place instead of pushing him down-screen. */
 @keyframes xm-sweep {
   0% {
     opacity: 0;
-    transform: translate3d(104cqw, 34cqh, 0) scale(0.6) rotate(10deg);
+    transform: translate3d(104cqw, calc(31cqh - var(--sw) * 0.47), 0)
+      scale(0.74) rotate(3deg);
   }
   7% { opacity: 1; }
   38% {
-    transform: translate3d(calc(56cqw - var(--sw) / 2), 13cqh, 0) scale(0.82)
-      rotate(3deg);
+    transform: translate3d(calc(56cqw - var(--sw) / 2), calc(26cqh - var(--sw) * 0.47), 0)
+      scale(1) rotate(2deg);
   }
   68% {
-    transform: translate3d(calc(18cqw - var(--sw) / 2), 6cqh, 0) scale(0.76)
-      rotate(5deg);
+    transform: translate3d(calc(18cqw - var(--sw) / 2), calc(23cqh - var(--sw) * 0.47), 0)
+      scale(0.88) rotate(3deg);
   }
   90% { opacity: 1; }
   100% {
     opacity: 0;
-    transform: translate3d(calc(-6cqw - var(--sw)), -4cqh, 0) scale(0.64)
-      rotate(8deg);
+    transform: translate3d(calc(-6cqw - var(--sw)), calc(20cqh - var(--sw) * 0.47), 0)
+      scale(0.78) rotate(4deg);
   }
 }
 

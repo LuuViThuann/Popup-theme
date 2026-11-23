@@ -678,7 +678,7 @@ export default function Stage() {
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 z-[50] grid place-items-center"
           style={v({
-            "--sw": "clamp(150px, 20cqw, 280px)",
+            "--sw": "clamp(190px, 27cqw, 380px)",
             "--gw": "clamp(300px, 46cqw, 620px)",
           })}
         >
@@ -811,7 +811,7 @@ export default function Stage() {
               // Released from the sack as the sleigh passes just right of
               // centre - see the 38% stop of `xm-sweep`.
               "--from-x": "6cqw",
-              "--from-y": "calc(var(--sw) * 0.62 - 37cqh)",
+              "--from-y": "calc(var(--sw) * 0.25 - 24cqh)",
               width: "var(--gw)",
             })}
           >
